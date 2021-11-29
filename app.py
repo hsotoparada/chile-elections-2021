@@ -96,13 +96,13 @@ server = app.server
 
 auth = dash_auth.BasicAuth(
     app,
-    {"chile-elections": "seguimos"}
+    {"chile-eleccion": "seguimos"}
 )
 
 header_1 = html.Div(
     [
         html.Div(
-            html.H1("Elecciones Presidenciales Chile 2021")
+            html.H1("Elección Presidenciales Chile 2021")
         ),
         html.Div(
             # html.H5("Repositorio: ")
