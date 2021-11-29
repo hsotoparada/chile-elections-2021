@@ -1,0 +1,16 @@
+.DS_Store
+
+# Byte-compiled files
+__pycache__/
+*.pyc
+
+# test files
+map.html
+
+# data and backups
+data/*.css
+data/get_data_o.py
+data/data_reg.pkl
+data/*_bkp_*
+*_bkp_*
+*.pdf
