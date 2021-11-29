@@ -4,6 +4,7 @@ import dash
 from dash import html, dcc
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import dash_auth
 import plotly.express as px
 import json
 import pickle
@@ -92,6 +93,11 @@ colorscales = sorted(colorscales)
 # app = dash.Dash(external_stylesheets = [dbc.themes.DARKLY])
 app = dash.Dash(external_stylesheets = [dbc.themes.SANDSTONE])
 server = app.server
+
+auth = dash_auth.BasicAuth(
+    app,
+    {"chile-elections": "seguimos"}
+)
 
 header_1 = html.Div(
     [
@@ -805,9 +811,7 @@ def evaluate_equation(df, eq):
 
 
 if __name__ == '__main__':
-    # app.run_server()
-    app.run_server(debug=True)
-    # app.run_server(mode="jupyterlab")
-#     app.run_server(mode="inline")
+    # app.run_server(debug=True)
+    app.run_server(debug=False)
 
 
