@@ -116,10 +116,10 @@ colorscales = sorted(colorscales)
 app = dash.Dash(external_stylesheets = [dbc.themes.SANDSTONE])
 server = app.server
 
-# auth = dash_auth.BasicAuth(
-#     app,
-#     {"chile-eleccion": "seguimos"}
-# )
+auth = dash_auth.BasicAuth(
+    app,
+    {"chile-eleccion": "seguimos"}
+)
 
 header_1 = html.Div(
     [
@@ -917,7 +917,7 @@ def evaluate_equation(df, eq):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
-    # app.run_server(debug=False)
+    # app.run_server(debug=True)
+    app.run_server(debug=False)
 
 
