@@ -116,10 +116,10 @@ colorscales = sorted(colorscales)
 app = dash.Dash(external_stylesheets = [dbc.themes.SANDSTONE])
 server = app.server
 
-auth = dash_auth.BasicAuth(
-    app,
-    {"chile-eleccion": "seguimos"}
-)
+# auth = dash_auth.BasicAuth(
+#     app,
+#     {"chile-eleccion": "seguimos"}
+# )
 
 header_1 = html.Div(
     [
@@ -163,7 +163,7 @@ controls_1_1 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),  
                 dbc.Tooltip(
-                    'Ingresar tipo de votos (candidato/a, blancos o nulos, fórmula, etc.) para actualizar primer mapa/figura.',
+                    'Ingresar categoría a mostrar en primer mapa/figura.',
                     target="select_category_map_1",
                 ),                      
             ],
@@ -179,7 +179,7 @@ controls_1_1 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ), 
                 dbc.Tooltip(
-                    "Ingresar fórmula a aplicar (si VOTOS = FORMULA) para actualizar primer mapa/figura.",
+                    "Ingresar fórmula a aplicar (si CATEGORIA = FORMULA) en primer mapa/figura.",
                     target="input_formula_map_1",
                 ),                
             ],
@@ -199,7 +199,7 @@ controls_1_2 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar escala en que los datos serán mostrados en primer mapa/figura.",
+                    "Ingresar escala de datos en primer mapa/figura.",
                     target="select_scale_map_1",
                 ),                  
             ],
@@ -215,7 +215,7 @@ controls_1_2 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar paleta de colores en que los datos serán mostrados en primer mapa.",
+                    "Ingresar paleta de colores en primer mapa/figura.",
                     target="colorscale_map_1",
                 ),                   
             ],
@@ -235,7 +235,7 @@ controls_1_3 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar región del país en que los datos serán mostrados en primer mapa/figura.",
+                    "Ingresar región del país en primer mapa/figura.",
                     target="select_region_map_1",
                 ),                                
             ],
@@ -255,7 +255,7 @@ controls_2_1 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),          
                 dbc.Tooltip(
-                    "Ingresar tipo de votos (candidato/a, blancos o nulos, fórmula, etc.) para actualizar segundo mapa/figura.",
+                    'Ingresar categoría a mostrar en segundo mapa/figura.',
                     target="select_category_map_2",
                 ),                                 
             ],
@@ -271,7 +271,7 @@ controls_2_1 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),               
                 dbc.Tooltip(
-                    "Ingresar fórmula a aplicar (si VOTOS = FORMULA) para actualizar segundo mapa/figura.",
+                    "Ingresar fórmula a aplicar (si CATEGORIA = FORMULA) en segundo mapa/figura.",
                     target="input_formula_map_2",
                 ),                    
             ],
@@ -291,7 +291,7 @@ controls_2_2 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar escala en que los datos serán mostrados en segundo mapa/figura.",
+                    "Ingresar escala de datos en segundo mapa/figura.",
                     target="select_scale_map_2",
                 ),                     
             ],
@@ -307,7 +307,7 @@ controls_2_2 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar paleta de colores en que los datos serán mostrados en segundo mapa.",
+                    "Ingresar paleta de colores en segundo mapa/figura.",
                     target="colorscale_map_2",
                 ),                
             ],
@@ -327,7 +327,7 @@ controls_2_3 = dbc.CardGroup(
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar región del país en que los datos serán mostrados en segundo mapa/figura.",
+                    "Ingresar región del país en segundo mapa/figura.",
                     target="select_region_map_2",
                 ),                 
             ],
@@ -455,7 +455,7 @@ fig_1 = html.Div(
             # style={'display': 'block', 'width': '60vh', 'height': '80vh'}
         ),
         dbc.Tooltip(
-            "Primer mapa.",
+            "Primer mapa",
             target="map_1",
             placement="top-end"            
         ),
@@ -469,7 +469,7 @@ fig_2 = html.Div(
             style={'height': '70vh'}
         ),
         dbc.Tooltip(
-            "Segundo mapa.",
+            "Segundo mapa",
             target="map_2",
             placement="top-end"
         ),     
@@ -481,7 +481,7 @@ fig_hist = html.Div([
     dcc.Graph(id="hist_1",style={'height': '40vh'})
     ),
     dbc.Tooltip(
-        "Primera figura.",
+        "Primera figura",
         target="hist_1",
         placement="top-end"            
     ),    
@@ -489,7 +489,7 @@ fig_hist = html.Div([
     dcc.Graph(id="hist_2",style={'height': '40vh'})
     ),
     dbc.Tooltip(
-        "Segunda figura.",
+        "Segunda figura",
         target="hist_2",
         placement="top-end"            
     ),    
@@ -917,7 +917,7 @@ def evaluate_equation(df, eq):
 
 
 if __name__ == '__main__':
-    # app.run_server(debug=True)
-    app.run_server(debug=False)
+    app.run_server(debug=True)
+    # app.run_server(debug=False)
 
 
