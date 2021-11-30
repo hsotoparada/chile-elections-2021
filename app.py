@@ -12,24 +12,21 @@ import re
 
 #-------------------------- PREPROCESS DATA -------------------------------------#
 
-# TODO: add normalization options (by max number of voters, total votes in comuna, etc)...DONE
-# TODO: add second map for comparison...DONE
-# TODO: add histogram showing votes per candidate and comuna (all entire region)...DONE
-# TODO: correct center coords of Valparaiso...DONE
-# TODO: add missing city ids...DONE
-# TODO: add functionality to accept input formula in dropdown menus...DONE
-# TODO: add signature (github) to Dash...DONE
-# TODO: maps -> check escala = porcentaje candidato
-# TODO: histogs -> if ABS remove total bar, add annotation showing total votes...DONE
-# TODO: update histogs with same info as maps...DONE
-# TODO: add reverse colorscales...DONE
-# TODO: update scale of histogs when FORMULA is selected ??
-# TODO: add ABSOLUTO_CANDIDATO a opciones de escala
-# TODO: add data of participation
-# TODO: deploy to AWS, Heroku, etc
-
 # Load votes dataframe and geojson containing regions
-df = pd.read_csv('data/votes_region_geojson.csv')
+df1 = pd.read_csv('data/votes_region_geojson.csv')
+df1 = df1[df1['City'] != 'total']
+df2 = pd.read_csv('data/participacion_region_geojson.csv')
+df2 = df2[df2['City'] != 'TOTAL']
+join_cols = {
+    "Participa_mesas": "Participacion_mesas",
+    "Participa_electors": "Participacion_electores",
+    "Participa_votes": "Participacion_votos",
+    "Participa_percentage": "Participacion_porcentaje"
+}
+df = df1.copy()
+df = df.join(df2[[k for k, v in join_cols.items()]])
+# df = df[df['City'] != 'total']
+
 with open('data/chile_comunas.geojson') as f:
     geojson_chile = json.load(f)
 
@@ -59,25 +56,50 @@ region_zooms = {
     "ALL": 3.5,
 }
 
-# options for candidate selection
-options_candidate = [{'label': x.upper(), 'value':x} for x in df.columns[2:-2].values if "_per" not in x]
-options_candidate.extend([{'label': "FORMULA", 'value': "FORMULA"}])
+# options for category selection
+options_category = [
+    {'label': "CANDIDAT@ "+x.upper(), 'value':x}
+    for x in df1.columns[2:-2].values
+    if "_per" not in x and "Votos" not in x
+]
+options_category.extend([{'label': "CANDIDAT@ FORMULA", 'value': "Formula"}])
+options_category.extend([
+    {'label': re.sub("_", " ", x.upper()), 'value':x}
+    for x in df1.columns[2:-2].values
+    if "_per" not in x and "Votos" in x
+])
+options_category.extend(
+    [{'label': re.sub("_", " ", v.upper()), 'value':k} for k, v in join_cols.items()]
+)
+#
+category_candidates = [d['value'] for d in options_category if "CANDIDAT" in d['label']]
+category_candidates.extend([d['value']+"_per" for d in options_category if "CANDIDAT" in d['label']])
+category_candidates = sorted(category_candidates)
+category_report = [d['value'] for d in options_category if "Votos_" in d['value']]
+category_report.extend([d['value']+"_per" for d in options_category if "Votos_" in d['value']])
+category_report = sorted(category_report)    
+category_participation = [d['value'] for d in options_category if "PARTICIPACION" in d['label']]
 
 # options for region selection
 options_reg = [{'label': x, 'value':x} for x in df["Region"].unique()]
-options_reg.extend([{'label': "ALL", 'value': "ALL"}])
+options_reg.extend([{'label': "TODAS", 'value': "ALL"}])
 
 # options for scaling data in map
 options_scale_map = [
-    {'label': "ABSOLUTO", 'value': "ABS"},
-    {'label': "PORCENTAJE_CANDIDATO", 'value': "PER_1"},
-    {'label': "PORCENTAJE_COMUN", 'value': "PER_2"}
+    {'label': "REGION", 'value': "ABS_1"},
+    {'label': "COMUN REGION", 'value': "ABS_2"},    
+    {'label': "PAIS", 'value': "ABS_3"},    
+    {'label': "COMUN PAIS", 'value': "ABS_4"},        
+    {'label': "% REGION", 'value': "PER_1"},
+    {'label': "% COMUN REGION", 'value': "PER_2"},
+    {'label': "% PAIS", 'value': "PER_3"},
+    {'label': "% COMUN PAIS", 'value': "PER_4"}    
 ]
 
 # options for scaling data in histogram
 options_scale_hist = [
     {'label': "ABSOLUTO", 'value': "ABS"},
-    {'label': "PORCENTAJE_COMUN", 'value': "PER"}
+    {'label': "PORCENTAJE TODOS CANDIDAT@S", 'value': "PER"}
 ]
 
 colorscales = px.colors.named_colorscales()
@@ -94,31 +116,32 @@ colorscales = sorted(colorscales)
 app = dash.Dash(external_stylesheets = [dbc.themes.SANDSTONE])
 server = app.server
 
-auth = dash_auth.BasicAuth(
-    app,
-    {"chile-eleccion": "seguimos"}
-)
+# auth = dash_auth.BasicAuth(
+#     app,
+#     {"chile-eleccion": "seguimos"}
+# )
 
 header_1 = html.Div(
     [
         html.Div(
-            html.H1("Elección Presidencial Chile 2021")
+            html.H2("Elección Presidencial Chile 2021")
         ),
+        html.Div(
+            html.A("Fuente: elaboración propia en base a datos del servel", href='https://www.servelelecciones.cl/', target="_blank")            
+        ),          
         html.Div(
             # html.H5("Repositorio: ")
             html.A("github repo", href='https://github.com/hsotoparada/Chile-Elections', target="_blank")            
         ),        
-        # html.A("repository", href='https://github.com/hsotoparada/Chile-Elections', target="_blank"),        
-        
     ]
 )
 
 header_2 = html.Div(
     dbc.Card([
         html.H5(
-            "Instrucciones: Seleccionar CANDIDATO/A, REGION y ESCALA en cada menú desplegable. "
+            "Instrucciones: Seleccionar CATEGORIA, REGION y ESCALA en cada menú desplegable. "
             "Las figuras interactivas (mapa e histograma) se actualizarán en base a la selección "
-            "o la FORMULA aplicada, en caso que la opción VOTOS = FORMULA sea seleccionada. "
+            "o la FORMULA aplicada, en caso que la opción CATEGORIA = FORMULA sea seleccionada. "
             "FORMULA puede ser suma o resta entre uno o más candidatos, representados por: "
             "BO, KA, PR, SI, EN, PA, AR (o bo, ka, etc.) "
             "correspondiente a Boric, Kast, Provoste, Sichel, Enriquez, Parisi, and Artés, respectivamente. "
@@ -133,15 +156,15 @@ controls_1_1 = dbc.CardGroup(
         dbc.Card(
             [
                 dcc.Dropdown(
-                    id='select_candidate_map_1',
-                    options=options_candidate,
-                    placeholder='VOTOS',
+                    id='select_category_map_1',
+                    options=options_category,
+                    placeholder='CATEGORIA VOTOS',
                     # placeholder='Candidato/a',                    
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),  
                 dbc.Tooltip(
-                    "Ingresar tipo de votos (candidato/a, blancos o nulos, fórmula, etc.) para actualizar primer mapa/figura.",
-                    target="select_candidate_map_1",
+                    'Ingresar tipo de votos (candidato/a, blancos o nulos, fórmula, etc.) para actualizar primer mapa/figura.',
+                    target="select_category_map_1",
                 ),                      
             ],
         body=True,            
@@ -188,7 +211,7 @@ controls_1_2 = dbc.CardGroup(
                     id='colorscale_map_1',
                     options=[{"value": x, "label": x} for x in colorscales],
                     placeholder='PALETA',
-                    value="viridis"
+                    value="hot_r"
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
@@ -226,14 +249,14 @@ controls_2_1 = dbc.CardGroup(
         dbc.Card(
             [
                 dcc.Dropdown(
-                    id='select_candidate_map_2',
-                    options=options_candidate,
-                    placeholder='VOTOS',
+                    id='select_category_map_2',
+                    options=options_category,
+                    placeholder='CATEGORIA VOTOS',
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),          
                 dbc.Tooltip(
                     "Ingresar tipo de votos (candidato/a, blancos o nulos, fórmula, etc.) para actualizar segundo mapa/figura.",
-                    target="select_candidate_map_2",
+                    target="select_category_map_2",
                 ),                                 
             ],
         body=True,            
@@ -280,7 +303,7 @@ controls_2_2 = dbc.CardGroup(
                     id='colorscale_map_2',
                     options=[{"value": x, "label": x} for x in colorscales],
                     placeholder='PALETA',
-                    value="viridis"
+                    value="hot_r"
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
@@ -313,20 +336,21 @@ controls_2_3 = dbc.CardGroup(
     ],
 )
 
+# TODO: remove
 controls_3_1 = dbc.CardGroup(
     [
         dbc.Card(
             [
                dcc.Dropdown(
-                   id='select_candidate_hist_1',
-                   options=options_candidate,
-                   placeholder='VOTOS',
+                   id='select_category_hist_1',
+                   options=options_category,
+                   placeholder='CATEGORIA VOTOS',
                    # value="Kast"
                    # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                ),
                 dbc.Tooltip(
                     "Ingresar tipo de votos (candidato/a, blancos o nulos, fórmula, etc.) para actualizar figura superior.",
-                    target="select_candidate_hist_1",
+                    target="select_category_hist_1",
                 ),                
             ],
         body=True,            
@@ -355,15 +379,15 @@ controls_3_2 = dbc.CardGroup(
         dbc.Card(
             [
                dcc.Dropdown(
-                   id='select_candidate_hist_2',
-                   options=options_candidate,
+                   id='select_category_hist_2',
+                   options=options_category,
                    placeholder='VOTOS',
                    # value="Kast"
                    # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                ),
                 dbc.Tooltip(
                     "Ingresar tipo de votos (candidato/a, blancos o nulos, fórmula, etc.) para actualizar figura inferior.",
-                    target="select_candidate_hist_2",
+                    target="select_category_hist_2",
                 ),               
             ],
         body=True,            
@@ -424,57 +448,78 @@ controls_3_3 = dbc.CardGroup(
 )
 
 fig_1 = html.Div(
-    dcc.Graph(
-        id="map_1",
-        style={'height': '70vh'}
-        # style={'display': 'block', 'width': '60vh', 'height': '80vh'}
-    )
+    [
+        dcc.Graph(
+            id="map_1",
+            style={'height': '70vh'}
+            # style={'display': 'block', 'width': '60vh', 'height': '80vh'}
+        ),
+        dbc.Tooltip(
+            "Primer mapa.",
+            target="map_1",
+            placement="top-end"            
+        ),
+    ]    
 ),
 
 fig_2 = html.Div(
-    dcc.Graph(
-        id="map_2",
-        style={'height': '70vh'}
-    )
+    [
+        dcc.Graph(
+            id="map_2",
+            style={'height': '70vh'}
+        ),
+        dbc.Tooltip(
+            "Segundo mapa.",
+            target="map_2",
+            placement="top-end"
+        ),     
+    ]
 ),
 
 fig_hist = html.Div([
     html.Div(
     dcc.Graph(id="hist_1",style={'height': '40vh'})
     ),
+    dbc.Tooltip(
+        "Primera figura.",
+        target="hist_1",
+        placement="top-end"            
+    ),    
     html.Div(
     dcc.Graph(id="hist_2",style={'height': '40vh'})
     ),
+    dbc.Tooltip(
+        "Segunda figura.",
+        target="hist_2",
+        placement="top-end"            
+    ),    
 ]),
 
 
 app.layout = dbc.Container(
     [
-        # html.H1("Elecciones Presidenciales Chile 2021"),
-        # html.A("repository", href='https://github.com/hsotoparada/Chile-Elections', target="_blank"),        
-        # html.Hr(),
         dbc.Row(
             [
-                dbc.Col(header_1, width=3),
-                dbc.Col(header_2, width=9),
+                dbc.Col(header_1, width=3, sm=3, md=3, lg=3, xl=3),
+                dbc.Col(header_2, width=9, sm=9, md=9, lg=9, xl=9),
             ],
             align="start",
         ),        
         html.Hr(),        
         dbc.Row(
             [
-                dbc.Col(controls_1_1, width=4),
-                dbc.Col(controls_1_2, width=4),
-                dbc.Col(controls_1_3, width={"size": 4})
+                dbc.Col(controls_1_1, width=5, sm=5, md=5, lg=4, xl=4),
+                dbc.Col(controls_1_2, width=2, sm=2, md=2, lg=4, xl=4),
+                dbc.Col(controls_1_3, width=5, sm=5, md=5, lg=4, xl=4)
                 # dbc.Col(controls_3_1, width=4)
             ],
             align="start",
         ),
         dbc.Row(
             [
-                dbc.Col(controls_2_1, width=4),
-                dbc.Col(controls_2_2, width=4),
-                dbc.Col(controls_2_3, width={"size": 4})
+                dbc.Col(controls_2_1, width=5, sm=5, md=5, lg=4, xl=4),
+                dbc.Col(controls_2_2, width=2, sm=2, md=2, lg=4, xl=4),
+                dbc.Col(controls_2_3, width=5, sm=5, md=5, lg=4, xl=4)
                 # dbc.Col(controls_3_2, width=4),               
             ],
             align="start",
@@ -490,9 +535,9 @@ app.layout = dbc.Container(
         html.Hr(),
         dbc.Row(
             [
-                dbc.Col(fig_1, width=4),
-                dbc.Col(fig_2, width=4),
-                dbc.Col(fig_hist, width=4)
+                dbc.Col(fig_1, width=4, sm=4, md=4, lg=4, xl=4),
+                dbc.Col(fig_2, width=4, sm=4, md=4, lg=4, xl=4),
+                dbc.Col(fig_hist, width=4, sm=4, md=4, lg=4, xl=4)
             ],
             align="start",
         ),
@@ -508,23 +553,26 @@ app.layout = dbc.Container(
 @app.callback(
     Output("map_1", "figure"),
     Output("hist_1", "figure"),
-    Input("select_candidate_map_1", "value"),
+    Input("select_category_map_1", "value"),
     Input("select_region_map_1", "value"),
     Input("select_scale_map_1", "value"),
     Input("input_formula_map_1", "value"),
     Input("colorscale_map_1", "value")
 )
-def update_fig_1(candidate, region, scale, eq, colorscale):
+def update_fig_1(category, region, scale, eq, colorscale):
     df_in = df.copy()
     #
     if region is None:
         raise dash.exceptions.PreventUpdate
     if scale is None:
         raise dash.exceptions.PreventUpdate
-    if candidate is None:
+    if category is None:
         raise dash.exceptions.PreventUpdate
-    if candidate == "FORMULA" and eq is None:
-        raise dash.exceptions.PreventUpdate        
+    if category == "Formula" and eq is None:
+        raise dash.exceptions.PreventUpdate
+    if category in category_participation:
+        if scale in ["ABS_2","ABS_4"] or "PER" in scale:
+            raise dash.exceptions.PreventUpdate            
     #
     # filter by region
     # df_in = df_in[df_in['Region'] == 'DE ANTOFAGASTA']
@@ -552,34 +600,37 @@ def update_fig_1(candidate, region, scale, eq, colorscale):
     #     # print(f['id'], f['properties'])
     #     print(f['id']) 
     #
-    print(f"input --> {candidate}, {region}, {scale}, {eq}, {colorscale}")
+    print(f"input --> {category}, {region}, {scale}, {eq}, {colorscale}")
     # print(df_in.dtypes)
     #
-    fig_map = create_map(df_in, geojson_show, candidate, region, scale, eq, colorscale)
-    fig_bar = create_histogram(df_in, scale, eq, candidate, colorscale)        
+    fig_map = create_map(df_in, geojson_show, category, region, scale, eq, colorscale)
+    fig_bar = create_histogram(df_in, scale, eq, category, colorscale)        
     return [fig_map, fig_bar]
 
 # add callback decorator
 @app.callback(
     Output("map_2", "figure"),
     Output("hist_2", "figure"),    
-    Input("select_candidate_map_2", "value"),
+    Input("select_category_map_2", "value"),
     Input("select_region_map_2", "value"),
     Input("select_scale_map_2", "value"),
     Input("input_formula_map_2", "value"),
     Input("colorscale_map_2", "value")
 )
-def update_fig_2(candidate, region, scale, eq, colorscale):
+def update_fig_2(category, region, scale, eq, colorscale):
     df_in = df.copy()
     #
     if region is None:
         raise dash.exceptions.PreventUpdate
     if scale is None:
         raise dash.exceptions.PreventUpdate
-    if candidate is None:
+    if category is None:
         raise dash.exceptions.PreventUpdate
-    if candidate == "FORMULA" and eq is None:
+    if category == "Formula" and eq is None:
         raise dash.exceptions.PreventUpdate 
+    if category in category_participation:
+        if scale in ["ABS_2","ABS_4"] or "PER" in scale:
+            raise dash.exceptions.PreventUpdate           
     #
     # filter by region
     if region != "ALL":
@@ -596,63 +647,93 @@ def update_fig_2(candidate, region, scale, eq, colorscale):
     geojson_show = geojson_chile.copy()
     city_ids = df_in['City_id'].values
     features_show = [f for f in geojson_chile['features'] if f['id'] in city_ids]
-    geojson_show['features'] = features_show
+    geojson_show['features'] = features_show   
     #
-    # for f in geojson_show['features']:
-    #     # print(f)
-    #     # print(f['id'], f['properties'])
-    #     print(f['id'])        
-    #
-    fig_map = create_map(df_in, geojson_show, candidate, region, scale, eq, colorscale)
-    fig_bar = create_histogram(df_in, scale, eq, candidate, colorscale)            
+    fig_map = create_map(df_in, geojson_show, category, region, scale, eq, colorscale)
+    fig_bar = create_histogram(df_in, scale, eq, category, colorscale)            
     return [fig_map, fig_bar]
 
-def create_map(df, geojson, candidate, region, scale, eq, colorscale):
+def create_map(df, geojson, category, region, scale, eq, colorscale):
     """
     Create map...
     """
-    print(candidate, scale)
+    print(category, scale)
     #
-    if candidate == "FORMULA":
+    if category == "Formula":
         df["Formula"], df["Formula_per"], eq_label = evaluate_equation(df, eq)
         # df.rename({"Formula": data_text, "Formula_per": f"{data_text}_per"}, axis='columns')
         data_column = "Formula"
         # data_text = data_column
         data_label = eq_label
     else:
-        data_column = candidate
-        # data_text = candidate
-        data_label = candidate                
+        data_column = category
+        # data_text = category
+        if category in category_candidates:
+            data_label = [o['label'].split(None)[-1] for o in options_category if o['value'] == category][0]            
+        if category in category_report:
+            data_label = [o['label'] for o in options_category if o['value'] == category][0]
+        if category in category_participation:
+            data_label = [o['label'] for o in options_category if o['value'] == category][0]            
     #
-    # data_column = candidate
-    if scale == "ABS":
+    # data_column = category
+    if "ABS" in scale:
         pass
-    if scale in ["PER_1", "PER_2"]:
+    if "PER" in scale:
         data_column += "_per"
     #
-    # TODO: create two scaling -> 1) per candidate. 2) common values among candidates
-    if scale in ["ABS", "PER_1"]:
-        range_max = df[data_column].max()
-        # range_color = [0, range_max]
-    elif scale == "PER_2":
-        range_max = df[[c for c in df.columns if "_per" in c and "Votos" not in c]].max().max()
+    labels={data_column: data_label}    
+    #
+    if scale in ["ABS_1", "ABS_3", "PER_1", "PER_3"]: # category scale
+        cols = data_column
+    elif scale in ["ABS_2", "ABS_4"]:  # common category scale
+        if category in category_candidates:
+            cols = [c for c in df.columns if c in category_candidates and"_per" not in c ]                        
+        elif category in category_report:
+            cols = [c for c in df.columns if c in category_report and "_per" not in c]                                               
+    elif scale in ["PER_2", "PER_4"]:  # common category scale
+        if category in category_candidates:
+            cols = [c for c in df.columns if c in category_candidates and"_per" in c ]                                    
+        elif category in category_report:
+            cols = [c for c in df.columns if c in category_report and "_per" in c]                                               
+    #
+    if scale in ["ABS_1", "PER_1"]:        
+        range_max = df[cols].max()
+    elif scale in ["ABS_3", "PER_3"]:
+        if category in category_participation:
+            range_max = df2[cols].max()
+        else:
+            range_max = df1[cols].max()        
+    elif scale in ["ABS_2", "PER_2"]:
+        range_max = df[cols].max().max()
+    elif scale in ["ABS_4", "PER_4"]:
+        range_max = df1[cols].max().max()        
+    #        
+    # if scale in ["ABS_1", "PER_1"]:
+    #     range_max = df[data_column].max()
+    #     # range_color = [0, range_max]
+    # elif scale == "ABS_2":
+    #     range_max = df[[c for c in df.columns if "_per" in c and "Votos" not in c]].max().max()        
+    # elif scale == "PER_2":
+    #     range_max = df[[c for c in df.columns if "_per" in c and "Votos" not in c]].max().max()
+    # elif scale == "PER_3":
+    #     range_max = df1[data_column].max()
+    # elif scale == "PER_4":
+    #     range_max = df1[[c for c in df1.columns if "_per" in c and "Votos" not in c]].max().max()        
     range_color = [0, range_max]
     print(range_color)
     #
     map_center = region_centers[region]
     map_zoom = region_zooms[region]
-    # if region == "ALL":
-    #     map_zoom = 3
     #
-    # TODO: e.g. still use "Boric" instead of "Boric_per" in colormap when using percentage values
     fig = px.choropleth_mapbox(
         df,
         geojson=geojson,
-        # color=candidate,
+        # color=category,
         color=data_column,
         # color="Boric",
         color_continuous_scale=colorscale,
-        range_color=range_color,        
+        range_color=range_color,   
+        labels=labels,
         # locations="City",
         locations="City_id",
         # locations="City_with_id",
@@ -661,17 +742,19 @@ def create_map(df, geojson, candidate, region, scale, eq, colorscale):
         featureidkey="id",
         mapbox_style="carto-positron",
         # mapbox_style="open-street-map",
-        opacity=0.7,
+        opacity=0.8,
         center=map_center,
         zoom=map_zoom,
         # range_color=[0, df["Boric"].max()],
-        # range_color=[0, df[candidate].max()],
+        # range_color=[0, df[category].max()],
         hover_data=["Region", "City"],
         # title=data_label
     )
     fig.update_geos(fitbounds="locations", visible=True)
     fig.update_layout(
-        margin={"r":0,"t":0,"l":0,"b":0}
+        margin={"r":0,"t":0,"l":0,"b":0},
+        # coloraxis_showscale=False
+        coloraxis_colorbar={'title':""}        
     )
     #
     # add annotation
@@ -688,17 +771,15 @@ def create_map(df, geojson, candidate, region, scale, eq, colorscale):
         # borderpad=4,
         bgcolor="lightgray",        
     )  
-    # fig.write_html('map.html', auto_open=True)
-    # fig.show()
     return fig
 
-def create_histogram(df, scale, eq, candidate, colorscale):
+def create_histogram(df, scale, eq, category, colorscale):
     """
     Create histogram...
     """
-    # print(eq, candidate)
+    # print(eq, category)
     #
-    if candidate == "FORMULA":
+    if category == "Formula":
         df["Formula"], df["Formula_per"], eq_label = evaluate_equation(df, eq)
         # df.rename({"Formula": data_text, "Formula_per": f"{data_text}_per"}, axis='columns')
         data_column = "Formula"
@@ -706,36 +787,56 @@ def create_histogram(df, scale, eq, candidate, colorscale):
         # data_column = data_text
         data_label = eq_label
     else:
-        data_column = candidate
-        data_text = candidate
-        data_label = candidate        
+        data_column = category
+        data_text = category
+        # data_label = category  
+        if category in category_candidates:
+            data_label = [o['label'].split(None)[-1] for o in options_category if o['value'] == category][0]            
+        if category in category_report:
+            data_label = [o['label'] for o in options_category if o['value'] == category][0]
+        if category in category_participation:
+            data_label = [o['label'] for o in options_category if o['value'] == category][0]          
     #
-    if scale == "ABS":
+    if "ABS" in scale:
         pass
-    # elif scale == "PER":
-    #     data_column += "_per"
-    #     data_text += "_per"
-    #     data_label += "_per"                
-    if scale in ["PER_1", "PER_2"]:
+    if "PER" in scale:
         data_column += "_per"
         data_text += "_per"
-        data_label += "_per"                
+        # data_label += "_per"         
     #
     labels={data_column: data_label}
     #
-    if scale in ["ABS", "PER_1"]:
-        range_max = df[data_column].max()
-    elif scale == "PER_2":
-        range_max = df[[c for c in df.columns if "_per" in c and "Votos" not in c]].max().max()
+    if scale in ["ABS_1", "ABS_3", "PER_1", "PER_3"]: # category scale
+        cols = data_column
+    elif scale in ["ABS_2", "ABS_4"]:  # common category scale
+        if category in category_candidates:
+            # cols = [c for c in df.columns if "_per" not in c and "Votos" not in c and "Participa" not in c]            
+            cols = [c for c in df.columns if c in category_candidates and"_per" not in c ]                        
+        elif category in category_report:
+            # cols = [c for c in df.columns if "_per" not in c and "Votos" in c] 
+            cols = [c for c in df.columns if c in category_report and "_per" not in c]                                               
+    elif scale in ["PER_2", "PER_4"]:  # common category scale
+        if category in category_candidates:
+            # cols = [c for c in df.columns if "_per" in c and "Votos" not in c and "Participa" not in c]
+            cols = [c for c in df.columns if c in category_candidates and"_per" in c ]                                    
+        elif category in category_report:
+            # cols = [c for c in df.columns if "_per" in c and "Votos" in c]
+            cols = [c for c in df.columns if c in category_report and "_per" in c]                                               
+    #
+    if scale in ["ABS_1", "PER_1"]:
+        range_max = df[cols].max()
+    elif scale in ["ABS_3", "PER_3"]:
+        if category in category_participation:
+            range_max = df2[cols].max()
+        else:        
+            range_max = df1[cols].max()        
+    elif scale in ["ABS_2", "PER_2"]:
+        range_max = df[cols].max().max()
+    elif scale in ["ABS_4", "PER_4"]:
+        range_max = df1[cols].max().max()      
+    #        
     range_data = [0, range_max]
     #
-    # if scale == "ABS":
-    #     cols = [x for x in df.columns[1:-2].values if "_per" not in x and "Votos" not in x]
-    # elif scale == "PER":
-    #     # data_column = "_per"
-    #     cols = [df.columns[1]]
-    #     cols.extend([x for x in df.columns[1:-2].values if "_per" in x and "Votos" not in x])
-    # df_in = df[cols]
     # print(df_in)
     df_in = df.copy()
     print(df_in.columns.values)    
@@ -748,7 +849,8 @@ def create_histogram(df, scale, eq, candidate, colorscale):
         labels=labels,
         color=data_column,      
         color_continuous_scale=colorscale, 
-        range_color=range_data              
+        range_color=range_data,
+        hover_data=["Region", "City"]
         )    
     fig.update_layout(
         # margin={"r":0,"t":0,"l":0,"b":0},
@@ -760,6 +862,10 @@ def create_histogram(df, scale, eq, candidate, colorscale):
     )    
     #
     # add annotation
+    # if category in category_participation or category in category_report:
+    #     annotate_label = [o['label'] for o in options_category if o['value'] == category][0]
+    # else:
+    #     annotate_label = re.sub("_per", "", data_label)
     fig.add_annotation(
         text=f"<b>{data_label}</b>",
         xref="paper",
@@ -811,7 +917,7 @@ def evaluate_equation(df, eq):
 
 
 if __name__ == '__main__':
-    # app.run_server(debug=True)
-    app.run_server(debug=False)
+    app.run_server(debug=True)
+    # app.run_server(debug=False)
 
 

@@ -11,6 +11,9 @@ map.html
 data/*.css
 data/get_data_o.py
 data/data_reg.pkl
+data/chile_comunas_tmp.geojson
 data/*_bkp_*
+user_test/
 *_bkp_*
 *.pdf
+TODO

@@ -54,14 +54,18 @@ with open('data/chile_comunas.geojson', 'w') as f:
 
 with open('data/comunas_id.pkl', 'wb') as pout:
     pickle.dump(comunas_id, pout)
+    
+# with open('data/comunas_id.pkl', 'rb') as pin:
+#     comunas_id = pickle.load(pin)
 
 # with open('data/chile_regions.geojson') as f:
 #     geojson_ch = json.load(f)
 
 # TODO: handle missing ids (e.g. NIQUEN)
 # include ids of comunas in votes dataframe
-df = pd.read_csv('data/votes_region.csv')
-cities = df["City"].values
+df_votes = pd.read_csv('data/votes_region.csv')
+df_participa = pd.read_csv('data/participacion_region.csv')
+cities = df_votes["City"].values
 print(len(cities))
 cities_new, ids = [],[]
 for city in cities:
@@ -77,16 +81,19 @@ for city in cities:
     ids.append(city_id)
 #
 print(len(cities_new))
-df["City_with_id"] = cities_new
-df["City_id"] = ids
-print(df.head())
-df.to_csv("data/votes_region_geojson.csv", index=False)
+df_votes["City_with_id"] = cities_new
+df_votes["City_id"] = ids
+df_participa["City_with_id"] = cities_new
+df_participa["City_id"] = ids
+print(df_votes.head())
+df_votes.to_csv("data/votes_region_geojson.csv", index=False)
+df_participa.to_csv("data/participacion_region_geojson.csv", index=False)
 
 # extract centers of each region
 dct_centers = {}
-regions = df["Region"].unique()
+regions = df_votes["Region"].unique()
 for region in regions:
-    df_in = df[df["Region"] == region]
+    df_in = df_votes[df_votes["Region"] == region]
     # geojson_show = geojson.copy()
     city_ids = df_in['City_id'].values
     features_in = [f for f in geojson['features'] if int(f['id']) in city_ids]
