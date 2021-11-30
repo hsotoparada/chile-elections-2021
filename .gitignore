@@ -4,9 +4,6 @@
 __pycache__/
 *.pyc
 
-# test files
-map.html
-
 # data and backups
 data/*.css
 data/get_data_o.py
@@ -16,4 +13,6 @@ data/*_bkp_*
 user_test/
 *_bkp_*
 *.pdf
+app_example.py
+map.html
 TODO
