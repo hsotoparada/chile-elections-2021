@@ -114,12 +114,12 @@ options_reg.extend([
 
 # options for scaling data in map
 options_scale_map = [
-    {'label': "REGION SELECTED CATEGORIA", 'value': "ABS_1"},
-    {'label': "REGION TODAS CATEGORIAS", 'value': "ABS_2"},    
+    {'label': "SELECTED CATEGORIA", 'value': "ABS_1"},
+    {'label': "TODAS CATEGORIAS", 'value': "ABS_2"},    
     {'label': "PAIS SELECTED CATEGORIA", 'value': "ABS_3"},    
     {'label': "PAIS TODAS CATEGORIAS", 'value': "ABS_4"},        
-    {'label': "% REGION SELECTED CATEGORIA", 'value': "PER_1"},
-    {'label': "% REGION TODAS CATEGORIAS", 'value': "PER_2"},
+    {'label': "% SELECTED CATEGORIA", 'value': "PER_1"},
+    {'label': "% TODAS CATEGORIAS", 'value': "PER_2"},
     {'label': "% PAIS SELECTED CATEGORIA", 'value': "PER_3"},
     {'label': "% PAIS TODAS CATEGORIAS", 'value': "PER_4"}    
 ]
@@ -255,6 +255,11 @@ controls_1_3 = dbc.CardGroup(
             ],
         body=True,            
         ),      
+    ],
+)
+
+controls_1_4 = dbc.CardGroup(
+    [ 
         dbc.Card(
             [
                 dcc.Dropdown(
@@ -272,6 +277,7 @@ controls_1_3 = dbc.CardGroup(
         )               
     ],
 )
+
 
 controls_2_1 = dbc.CardGroup(
     [
@@ -346,7 +352,12 @@ controls_2_3 = dbc.CardGroup(
                 ),                
             ],
         body=True,            
-        ),
+        ),         
+    ],
+)
+
+controls_2_4 = dbc.CardGroup(
+    [       
         dbc.Card(
             [
                 dcc.Dropdown(
@@ -539,7 +550,8 @@ app.layout = dbc.Container(
             [
                 dbc.Col(controls_1_1, width=4, sm=4, md=4, lg=4, xl=4),
                 dbc.Col(controls_1_2, width=4, sm=4, md=4, lg=4, xl=4),
-                dbc.Col(controls_1_3, width=4, sm=4, md=4, lg=4, xl=4)
+                dbc.Col(controls_1_3, width=1, sm=1, md=1, lg=1, xl=1),
+                dbc.Col(controls_1_4, width=3, sm=3, md=3, lg=3, xl=3)                
                 # dbc.Col(controls_3_1, width=4)
             ],
             align="start",
@@ -548,7 +560,8 @@ app.layout = dbc.Container(
             [
                 dbc.Col(controls_2_1, width=4, sm=4, md=4, lg=4, xl=4),
                 dbc.Col(controls_2_2, width=4, sm=4, md=4, lg=4, xl=4),
-                dbc.Col(controls_2_3, width=4, sm=4, md=4, lg=4, xl=4)
+                dbc.Col(controls_2_3, width=1, sm=1, md=1, lg=1, xl=1),
+                dbc.Col(controls_2_4, width=3, sm=3, md=3, lg=3, xl=3)                
                 # dbc.Col(controls_3_2, width=4),               
             ],
             align="start",
@@ -624,8 +637,11 @@ def raise_exceptions(category, region, scale, eq, colorscale):
         raise dash.exceptions.PreventUpdate
     if category is None:
         raise dash.exceptions.PreventUpdate
-    if category == "Formula" and eq is None:
-        raise dash.exceptions.PreventUpdate
+    if category == "Formula":
+        if eq is None:
+            raise dash.exceptions.PreventUpdate
+        if scale in ["ABS_3","ABS_4","PER_3","PER_4"]:
+            raise dash.exceptions.PreventUpdate        
     if category in category_participation:
         # if scale in ["ABS_2","ABS_4"] or "PER" in scale:
         if "PER" in scale:            
