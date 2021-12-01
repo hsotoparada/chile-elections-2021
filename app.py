@@ -12,10 +12,12 @@ import re
 
 #-------------------------- PREPROCESS DATA -------------------------------------#
 
-# Load votes dataframe and geojson containing regions
+# load dataframes of votes in comunas and regions
 df1 = pd.read_csv('data/votes_region_geojson.csv')
+df1_reg = df1[df1['City'] == 'total']
 df1 = df1[df1['City'] != 'total']
 df2 = pd.read_csv('data/participacion_region_geojson.csv')
+df2_reg = df2[df2['City'] == 'TOTAL']
 df2 = df2[df2['City'] != 'TOTAL']
 join_cols = {
     "Participa_mesas": "Participacion_mesas",
@@ -25,17 +27,39 @@ join_cols = {
 }
 df = df1.copy()
 df = df.join(df2[[k for k, v in join_cols.items()]])
+df = df.astype({
+    'City_id': 'str',
+    'City_with_id': 'str',
+    'Region_id': 'str',
+    'Region_with_id': 'str',
+})
+#
 # df = df[df['City'] != 'total']
+df_reg = df1_reg.copy()
+df_reg = df_reg.join(df2_reg[[k for k, v in join_cols.items()]])
+df_reg["City"].replace(to_replace={"total": "TODAS"}, inplace=True)
+df_reg = df_reg.astype({
+    'City_id': 'str',
+    'City_with_id': 'str',
+    'Region_id': 'str',
+    'Region_with_id': 'str',
+})
 
+# load geojson datasets of comunas and regions
 with open('data/chile_comunas.geojson') as f:
-    geojson_chile = json.load(f)
+    geojson_cities = json.load(f)
 
-with open('data/comunas_id.pkl', 'rb') as pin:
-    comunas_id = pickle.load(pin)
+with open('data/chile_regions.geojson') as f:
+    geojson_regions = json.load(f)
 
+# with open('data/comunas_id.pkl', 'rb') as pin:
+#     comunas_id = pickle.load(pin)
+
+# load calculated geographical center of regions
 with open('data/region_centers.pkl', 'rb') as pin:
     region_centers = pickle.load(pin)
 
+# predefine zooms applied for region selection
 region_zooms = {
     "DE ARICA Y PARINACOTA": 8,
     "DE TARAPACA": 7,
@@ -53,19 +77,20 @@ region_zooms = {
     "DE LOS LAGOS": 6.5,
     "DE AYSEN DEL GENERAL CARLOS IBAÑEZ DEL CAMPO": 6,
     "DE MAGALLANES Y DE LA ANTARTICA CHILENA": 5.5,
-    "ALL": 3.5,
+    "ALL PER CITY": 3.5,
+    "ALL PER REGION": 3.5,    
 }
 
 # options for category selection
 options_category = [
     {'label': "CANDIDAT@ "+x.upper(), 'value':x}
-    for x in df1.columns[2:-2].values
+    for x in df1.columns[2:-4].values
     if "_per" not in x and "Votos" not in x
 ]
 options_category.extend([{'label': "CANDIDAT@ FORMULA", 'value': "Formula"}])
 options_category.extend([
     {'label': re.sub("_", " ", x.upper()), 'value':x}
-    for x in df1.columns[2:-2].values
+    for x in df1.columns[2:-4].values
     if "_per" not in x and "Votos" in x
 ])
 options_category.extend(
@@ -82,18 +107,21 @@ category_participation = [d['value'] for d in options_category if "PARTICIPACION
 
 # options for region selection
 options_reg = [{'label': x, 'value':x} for x in df["Region"].unique()]
-options_reg.extend([{'label': "TODAS", 'value': "ALL"}])
+options_reg.extend([
+    {'label': "TODAS POR COMUNA", 'value': "ALL PER CITY"},
+    {'label': "TODAS POR REGION", 'value': "ALL PER REGION"}    
+])
 
 # options for scaling data in map
 options_scale_map = [
-    {'label': "REGION", 'value': "ABS_1"},
-    {'label': "COMUN REGION", 'value': "ABS_2"},    
-    {'label': "PAIS", 'value': "ABS_3"},    
-    {'label': "COMUN PAIS", 'value': "ABS_4"},        
-    {'label': "% REGION", 'value': "PER_1"},
-    {'label': "% COMUN REGION", 'value': "PER_2"},
-    {'label': "% PAIS", 'value': "PER_3"},
-    {'label': "% COMUN PAIS", 'value': "PER_4"}    
+    {'label': "REGION SELECTED CATEGORIA", 'value': "ABS_1"},
+    {'label': "REGION TODAS CATEGORIAS", 'value': "ABS_2"},    
+    {'label': "PAIS SELECTED CATEGORIA", 'value': "ABS_3"},    
+    {'label': "PAIS TODAS CATEGORIAS", 'value': "ABS_4"},        
+    {'label': "% REGION SELECTED CATEGORIA", 'value': "PER_1"},
+    {'label': "% REGION TODAS CATEGORIAS", 'value': "PER_2"},
+    {'label': "% PAIS SELECTED CATEGORIA", 'value': "PER_3"},
+    {'label': "% PAIS TODAS CATEGORIAS", 'value': "PER_4"}    
 ]
 
 # options for scaling data in histogram
@@ -102,6 +130,7 @@ options_scale_hist = [
     {'label': "PORCENTAJE TODOS CANDIDAT@S", 'value': "PER"}
 ]
 
+# options for colorscale
 colorscales = px.colors.named_colorscales()
 colorscales_r = [c+'_r' for c in colorscales]
 colorscales.extend(colorscales_r)
@@ -116,10 +145,10 @@ colorscales = sorted(colorscales)
 app = dash.Dash(external_stylesheets = [dbc.themes.SANDSTONE])
 server = app.server
 
-auth = dash_auth.BasicAuth(
-    app,
-    {"chile-eleccion": "seguimos"}
-)
+# auth = dash_auth.BasicAuth(
+#     app,
+#     {"chile-eleccion": "seguimos"}
+# )
 
 header_1 = html.Div(
     [
@@ -193,18 +222,23 @@ controls_1_2 = dbc.CardGroup(
         dbc.Card(
             [
                 dcc.Dropdown(
-                    id='select_scale_map_1',
-                    options=options_scale_map,
-                    placeholder='ESCALA',
+                    id='select_region_map_1',
+                    options=options_reg,
+                    placeholder='REGION',
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar escala de datos en primer mapa/figura.",
-                    target="select_scale_map_1",
-                ),                  
+                    "Ingresar región del país en primer mapa/figura.",
+                    target="select_region_map_1",
+                ),                                
             ],
         body=True,            
-        ),         
+        ),
+    ],
+)
+
+controls_1_3 = dbc.CardGroup(
+    [
         dbc.Card(
             [
                 dcc.Dropdown(
@@ -220,27 +254,22 @@ controls_1_2 = dbc.CardGroup(
                 ),                   
             ],
         body=True,            
-        ),                
-    ],
-)
-
-controls_1_3 = dbc.CardGroup(
-    [
+        ),      
         dbc.Card(
             [
                 dcc.Dropdown(
-                    id='select_region_map_1',
-                    options=options_reg,
-                    placeholder='REGION',
+                    id='select_scale_map_1',
+                    options=options_scale_map,
+                    placeholder='ESCALA',
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar región del país en primer mapa/figura.",
-                    target="select_region_map_1",
-                ),                                
+                    "Ingresar escala de datos en primer mapa/figura.",
+                    target="select_scale_map_1",
+                ),                  
             ],
         body=True,            
-        ),
+        )               
     ],
 )
 
@@ -283,20 +312,25 @@ controls_2_1 = dbc.CardGroup(
 controls_2_2 = dbc.CardGroup(
     [
         dbc.Card(
-            [
+            [        
                 dcc.Dropdown(
-                    id='select_scale_map_2',
-                    options=options_scale_map,
-                    placeholder='ESCALA',
+                    id='select_region_map_2',
+                    options=options_reg,
+                    placeholder='REGION',
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar escala de datos en segundo mapa/figura.",
-                    target="select_scale_map_2",
-                ),                     
+                    "Ingresar región del país en segundo mapa/figura.",
+                    target="select_region_map_2",
+                ),                 
             ],
         body=True,            
-        ),        
+        ),
+    ],
+)
+
+controls_2_3 = dbc.CardGroup(
+    [       
         dbc.Card(
             [
                 dcc.Dropdown(
@@ -312,27 +346,22 @@ controls_2_2 = dbc.CardGroup(
                 ),                
             ],
         body=True,            
-        ),         
-    ],
-)
-
-controls_2_3 = dbc.CardGroup(
-    [
+        ),
         dbc.Card(
-            [        
+            [
                 dcc.Dropdown(
-                    id='select_region_map_2',
-                    options=options_reg,
-                    placeholder='REGION',
+                    id='select_scale_map_2',
+                    options=options_scale_map,
+                    placeholder='ESCALA',
                     # style={'width':'40%', 'padding':'3px', 'font-size':'14px', 'text-align-last':'center'}
                 ),
                 dbc.Tooltip(
-                    "Ingresar región del país en segundo mapa/figura.",
-                    target="select_region_map_2",
-                ),                 
+                    "Ingresar escala de datos en segundo mapa/figura.",
+                    target="select_scale_map_2",
+                ),                     
             ],
         body=True,            
-        ),
+        ),         
     ],
 )
 
@@ -508,18 +537,18 @@ app.layout = dbc.Container(
         html.Hr(),        
         dbc.Row(
             [
-                dbc.Col(controls_1_1, width=5, sm=5, md=5, lg=4, xl=4),
-                dbc.Col(controls_1_2, width=2, sm=2, md=2, lg=4, xl=4),
-                dbc.Col(controls_1_3, width=5, sm=5, md=5, lg=4, xl=4)
+                dbc.Col(controls_1_1, width=4, sm=4, md=4, lg=4, xl=4),
+                dbc.Col(controls_1_2, width=4, sm=4, md=4, lg=4, xl=4),
+                dbc.Col(controls_1_3, width=4, sm=4, md=4, lg=4, xl=4)
                 # dbc.Col(controls_3_1, width=4)
             ],
             align="start",
         ),
         dbc.Row(
             [
-                dbc.Col(controls_2_1, width=5, sm=5, md=5, lg=4, xl=4),
-                dbc.Col(controls_2_2, width=2, sm=2, md=2, lg=4, xl=4),
-                dbc.Col(controls_2_3, width=5, sm=5, md=5, lg=4, xl=4)
+                dbc.Col(controls_2_1, width=4, sm=4, md=4, lg=4, xl=4),
+                dbc.Col(controls_2_2, width=4, sm=4, md=4, lg=4, xl=4),
+                dbc.Col(controls_2_3, width=4, sm=4, md=4, lg=4, xl=4)
                 # dbc.Col(controls_3_2, width=4),               
             ],
             align="start",
@@ -549,7 +578,7 @@ app.layout = dbc.Container(
 
 #-------------------------- DASH INTERACTIVITY -------------------------------#
 
-# add callback decorator
+# callback decorator
 @app.callback(
     Output("map_1", "figure"),
     Output("hist_1", "figure"),
@@ -560,54 +589,15 @@ app.layout = dbc.Container(
     Input("colorscale_map_1", "value")
 )
 def update_fig_1(category, region, scale, eq, colorscale):
-    df_in = df.copy()
     #
-    if region is None:
-        raise dash.exceptions.PreventUpdate
-    if scale is None:
-        raise dash.exceptions.PreventUpdate
-    if category is None:
-        raise dash.exceptions.PreventUpdate
-    if category == "Formula" and eq is None:
-        raise dash.exceptions.PreventUpdate
-    if category in category_participation:
-        if scale in ["ABS_2","ABS_4"] or "PER" in scale:
-            raise dash.exceptions.PreventUpdate            
-    #
-    # filter by region
-    # df_in = df_in[df_in['Region'] == 'DE ANTOFAGASTA']
-    # df_in = df_in[df_in['Region'] == 'METROPOLITANA DE SANTIAGO']
-    if region != "ALL":
-        df_in = df_in[df_in['Region'] == region]
-    df_in = df_in[df_in['City'] != 'total']
-    df_in.reset_index(drop=True, inplace=True)
-    # df_in = df_in.iloc[:2, :]
-    df_in = df_in.astype({'City_with_id': 'str', 'City_id': 'str'})
-    print(df_in.head(20))
-    print(df.shape)
-    print(df_in.shape)
-    # print(df_in.dtypes)
-    #
-    # filter geojson
-    geojson_show = geojson_chile.copy()
-    city_ids = df_in['City_id'].values
-    features_show = [f for f in geojson_chile['features'] if f['id'] in city_ids]
-    geojson_show['features'] = features_show
-    #
-    # print(geojson_show)
-    # for f in geojson_show['features']:
-    #     # print(f)
-    #     # print(f['id'], f['properties'])
-    #     print(f['id']) 
-    #
-    print(f"input --> {category}, {region}, {scale}, {eq}, {colorscale}")
-    # print(df_in.dtypes)
-    #
-    fig_map = create_map(df_in, geojson_show, category, region, scale, eq, colorscale)
-    fig_bar = create_histogram(df_in, scale, eq, category, colorscale)        
+    raise_exceptions(category, region, scale, eq, colorscale)            
+    df_in = filter_dataframe(region)    
+    geojson = filter_geojson(df_in, region)
+    fig_map = create_map(df_in, geojson, category, region, scale, eq, colorscale)
+    fig_bar = create_histogram(df_in, scale, eq, category, region, colorscale)        
     return [fig_map, fig_bar]
 
-# add callback decorator
+# callback decorator
 @app.callback(
     Output("map_2", "figure"),
     Output("hist_2", "figure"),    
@@ -618,8 +608,16 @@ def update_fig_1(category, region, scale, eq, colorscale):
     Input("colorscale_map_2", "value")
 )
 def update_fig_2(category, region, scale, eq, colorscale):
-    df_in = df.copy()
     #
+    raise_exceptions(category, region, scale, eq, colorscale)            
+    df_in = filter_dataframe(region)    
+    geojson = filter_geojson(df_in, region)
+    fig_map = create_map(df_in, geojson, category, region, scale, eq, colorscale)
+    fig_bar = create_histogram(df_in, scale, eq, category, region, colorscale)        
+    return [fig_map, fig_bar]
+    
+def raise_exceptions(category, region, scale, eq, colorscale):
+    print(f"input --> {category}, {region}, {scale}, {eq}, {colorscale}")    
     if region is None:
         raise dash.exceptions.PreventUpdate
     if scale is None:
@@ -627,41 +625,57 @@ def update_fig_2(category, region, scale, eq, colorscale):
     if category is None:
         raise dash.exceptions.PreventUpdate
     if category == "Formula" and eq is None:
-        raise dash.exceptions.PreventUpdate 
+        raise dash.exceptions.PreventUpdate
     if category in category_participation:
-        if scale in ["ABS_2","ABS_4"] or "PER" in scale:
-            raise dash.exceptions.PreventUpdate           
-    #
+        # if scale in ["ABS_2","ABS_4"] or "PER" in scale:
+        if "PER" in scale:            
+            raise dash.exceptions.PreventUpdate 
+
+def filter_dataframe(region):    
     # filter by region
-    if region != "ALL":
-        df_in = df_in[df_in['Region'] == region]
-    df_in = df_in[df_in['City'] != 'total']
+    if region == "ALL PER REGION":
+        df_in = df_reg.copy()
+    else:
+        df_in = df.copy()
+        if "ALL" not in region:
+            df_in = df_in[df_in['Region'] == region]
+    # df_in = df_in[df_in['City'] != 'total']
     df_in.reset_index(drop=True, inplace=True)
-    df_in = df_in.astype({'City_with_id': 'str', 'City_id': 'str'})
-    print(df_in.head(20))
+    # df_in = df_in.iloc[:2, :]
+    # df_in = df_in.astype({'City_with_id': 'str', 'City_id': 'str'})
+    print(df_in.head(10))
     print(df.shape)
     print(df_in.shape)
     # print(df_in.dtypes)
-    #
-    # filter geojson
-    geojson_show = geojson_chile.copy()
-    city_ids = df_in['City_id'].values
-    features_show = [f for f in geojson_chile['features'] if f['id'] in city_ids]
-    geojson_show['features'] = features_show   
-    #
-    fig_map = create_map(df_in, geojson_show, category, region, scale, eq, colorscale)
-    fig_bar = create_histogram(df_in, scale, eq, category, colorscale)            
-    return [fig_map, fig_bar]
+    return df_in    
 
-def create_map(df, geojson, category, region, scale, eq, colorscale):
+def filter_geojson(df_in, region):   
+    # filter geojson
+    if region == "ALL PER REGION":
+        geojson_show = geojson_regions.copy()
+        geojon_ids = df_in['Region_id'].values
+        features_show = [f for f in geojson_regions['features'] if f['id'] in geojon_ids]
+        geojson_show['features'] = features_show         
+    else:
+        geojson_show = geojson_cities.copy()
+        geojon_ids = df_in['City_id'].values
+        features_show = [f for f in geojson_cities['features'] if f['id'] in geojon_ids]
+        geojson_show['features'] = features_show 
+    # print(geojson_show)
+    # for f in geojson_show['features']:
+    #     # print(f)
+    #     # print(f['id'], f['properties'])
+    #     print(f['id'])     
+    return geojson_show
+
+def create_map(df_in, geojson, category, region, scale, eq, colorscale):
     """
     Create map...
     """
-    print(category, scale)
-    #
+    # print(category, scale)
     if category == "Formula":
-        df["Formula"], df["Formula_per"], eq_label = evaluate_equation(df, eq)
-        # df.rename({"Formula": data_text, "Formula_per": f"{data_text}_per"}, axis='columns')
+        df_in["Formula"], df_in["Formula_per"], eq_label = evaluate_equation(df_in, eq)
+        # df_in.rename({"Formula": data_text, "Formula_per": f"{data_text}_per"}, axis='columns')
         data_column = "Formula"
         # data_text = data_column
         data_label = eq_label
@@ -685,36 +699,44 @@ def create_map(df, geojson, category, region, scale, eq, colorscale):
     #
     if scale in ["ABS_1", "ABS_3", "PER_1", "PER_3"]: # category scale
         cols = data_column
-    elif scale in ["ABS_2", "ABS_4"]:  # common category scale
+    elif scale in ["ABS_2", "ABS_4"]: # common category scale
         if category in category_candidates:
-            cols = [c for c in df.columns if c in category_candidates and"_per" not in c ]                        
+            cols = [c for c in df_in.columns if c in category_candidates and"_per" not in c ]                        
         elif category in category_report:
-            cols = [c for c in df.columns if c in category_report and "_per" not in c]                                               
-    elif scale in ["PER_2", "PER_4"]:  # common category scale
+            cols = [c for c in df_in.columns if c in category_report and "_per" not in c] 
+        elif category in category_participation:
+            cols = data_column
+    elif scale in ["PER_2", "PER_4"]: # common category scale
         if category in category_candidates:
-            cols = [c for c in df.columns if c in category_candidates and"_per" in c ]                                    
+            cols = [c for c in df_in.columns if c in category_candidates and"_per" in c ]                                    
         elif category in category_report:
-            cols = [c for c in df.columns if c in category_report and "_per" in c]                                               
+            cols = [c for c in df_in.columns if c in category_report and "_per" in c]                                               
     #
     if scale in ["ABS_1", "PER_1"]:        
-        range_max = df[cols].max()
+        range_max = df_in[cols].max()
     elif scale in ["ABS_3", "PER_3"]:
         if category in category_participation:
             range_max = df2[cols].max()
         else:
             range_max = df1[cols].max()        
     elif scale in ["ABS_2", "PER_2"]:
-        range_max = df[cols].max().max()
+        if category in category_participation:
+            range_max = df_in[cols].max()
+        else:
+            range_max = df_in[cols].max().max()
     elif scale in ["ABS_4", "PER_4"]:
-        range_max = df1[cols].max().max()        
+        if category in category_participation:
+            range_max = df2[cols].max()
+        else:
+            range_max = df1[cols].max().max()        
     #        
     # if scale in ["ABS_1", "PER_1"]:
-    #     range_max = df[data_column].max()
+    #     range_max = df_in[data_column].max()
     #     # range_color = [0, range_max]
     # elif scale == "ABS_2":
-    #     range_max = df[[c for c in df.columns if "_per" in c and "Votos" not in c]].max().max()        
+    #     range_max = df_in[[c for c in df_in.columns if "_per" in c and "Votos" not in c]].max().max()        
     # elif scale == "PER_2":
-    #     range_max = df[[c for c in df.columns if "_per" in c and "Votos" not in c]].max().max()
+    #     range_max = df_in[[c for c in df_in.columns if "_per" in c and "Votos" not in c]].max().max()
     # elif scale == "PER_3":
     #     range_max = df1[data_column].max()
     # elif scale == "PER_4":
@@ -724,9 +746,15 @@ def create_map(df, geojson, category, region, scale, eq, colorscale):
     #
     map_center = region_centers[region]
     map_zoom = region_zooms[region]
+    if region == "ALL PER REGION":
+        locations = "Region_id"
+        hover_data=["Region"]
+    else:
+        locations="City_id"
+        hover_data=["Region", "City"]
     #
     fig = px.choropleth_mapbox(
-        df,
+        df_in,
         geojson=geojson,
         # color=category,
         color=data_column,
@@ -735,7 +763,7 @@ def create_map(df, geojson, category, region, scale, eq, colorscale):
         range_color=range_color,   
         labels=labels,
         # locations="City",
-        locations="City_id",
+        locations=locations,
         # locations="City_with_id",
         # featureidkey="properties.comuna",
         # featureidkey="properties.Comuna",
@@ -745,9 +773,9 @@ def create_map(df, geojson, category, region, scale, eq, colorscale):
         opacity=0.8,
         center=map_center,
         zoom=map_zoom,
-        # range_color=[0, df["Boric"].max()],
-        # range_color=[0, df[category].max()],
-        hover_data=["Region", "City"],
+        # range_color=[0, df_in["Boric"].max()],
+        # range_color=[0, df_in[category].max()],
+        hover_data=hover_data,
         # title=data_label
     )
     fig.update_geos(fitbounds="locations", visible=True)
@@ -773,7 +801,7 @@ def create_map(df, geojson, category, region, scale, eq, colorscale):
     )  
     return fig
 
-def create_histogram(df, scale, eq, category, colorscale):
+def create_histogram(df, scale, eq, category, region, colorscale):
     """
     Create histogram...
     """
@@ -814,7 +842,9 @@ def create_histogram(df, scale, eq, category, colorscale):
             cols = [c for c in df.columns if c in category_candidates and"_per" not in c ]                        
         elif category in category_report:
             # cols = [c for c in df.columns if "_per" not in c and "Votos" in c] 
-            cols = [c for c in df.columns if c in category_report and "_per" not in c]                                               
+            cols = [c for c in df.columns if c in category_report and "_per" not in c]
+        elif category in category_participation:
+            cols = data_column                                               
     elif scale in ["PER_2", "PER_4"]:  # common category scale
         if category in category_candidates:
             # cols = [c for c in df.columns if "_per" in c and "Votos" not in c and "Participa" not in c]
@@ -829,28 +859,47 @@ def create_histogram(df, scale, eq, category, colorscale):
         if category in category_participation:
             range_max = df2[cols].max()
         else:        
-            range_max = df1[cols].max()        
+            range_max = df1[cols].max()
     elif scale in ["ABS_2", "PER_2"]:
-        range_max = df[cols].max().max()
+        if category in category_participation:
+            range_max = df[cols].max()
+        else:
+            range_max = df[cols].max().max()            
     elif scale in ["ABS_4", "PER_4"]:
-        range_max = df1[cols].max().max()      
+        if category in category_participation:
+            range_max = df2[cols].max()
+        else:
+            range_max = df1[cols].max().max() 
     #        
     range_data = [0, range_max]
     #
     # print(df_in)
-    df_in = df.copy()
+    df_in = df.copy() # TODO: needed ??
     print(df_in.columns.values)    
+    if region == "ALL PER REGION":
+        x = "Region"
+        hover_data=["Region"]
+    else:
+        x = "City"
+        hover_data=["Region", "City"]    
     #
+    df_in["Region"].replace(
+        to_replace={
+            "DEL LIBERTADOR GENERAL BERNARDO O'HIGGINS": "DE O'HIGGINS",            
+            "DE AYSEN DEL GENERAL CARLOS IBAÑEZ DEL CAMPO": "DE AYSEN",
+            "DE MAGALLANES Y DE LA ANTARTICA CHILENA": "DE MAGALLANES"            
+            }, inplace=True
+        )
     fig = px.bar(
         df_in,
         y=data_column,
-        x='City',
+        x=x,
         text=data_text,
         labels=labels,
         color=data_column,      
         color_continuous_scale=colorscale, 
         range_color=range_data,
-        hover_data=["Region", "City"]
+        hover_data=hover_data
         )    
     fig.update_layout(
         # margin={"r":0,"t":0,"l":0,"b":0},
@@ -917,7 +966,7 @@ def evaluate_equation(df, eq):
 
 
 if __name__ == '__main__':
-    # app.run_server(debug=True)
-    app.run_server(debug=False)
+    app.run_server(debug=True)
+    # app.run_server(debug=False)
 
 
