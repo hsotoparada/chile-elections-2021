@@ -5,6 +5,8 @@ __pycache__/
 *.pyc
 
 # data and backups
+data/comunas
+data/regions
 data/*.css
 data/data_reg.pkl
 data/*_tmp.geojson
