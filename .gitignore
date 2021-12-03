@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 
 # data and backups
+.spyproject/
 data/comunas
 data/regions
 data/*.css

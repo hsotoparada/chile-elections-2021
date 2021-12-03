@@ -28,6 +28,8 @@ comunas_id = {}
 for i in range(len(geojson_comunas['features'])):
     city = geojson_comunas['features'][i]['properties']['Comuna']
     city = unidecode.unidecode(city).upper()
+    if city == "TREGUACO":
+        city = "TREHUACO"
     obj_id = str(geojson_comunas['features'][i]['properties']['objectid'])
     print(city, geojson_comunas['type'])
     geojson_comunas['features'][i]['properties']['Comuna'] = f"{obj_id}-{city}"
@@ -95,6 +97,16 @@ with open('data/regions_id.pkl', 'wb') as pout:
 # read dataframes of votes
 df_votes = pd.read_csv('data/votes_region.csv')
 df_participa = pd.read_csv('data/participacion_region.csv')
+
+# correct missspelling cities
+df_votes["City"].replace(
+    to_replace={"CABO DE HORNOS(EX-NAVARINO)": "CABO DE HORNOS"},
+    inplace=True
+    )
+df_participa["City"].replace(
+    to_replace={"CABO DE HORNOS(EX-NAVARINO)": "CABO DE HORNOS"},
+    inplace=True
+    )
 
 # include ids of comunas in dataframes of votes 
 cities = df_votes["City"].values
