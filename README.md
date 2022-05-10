@@ -3,7 +3,7 @@
 This data science project showcases in an interactive Dashboard Application the outcome of the two 
 voting rounds of the 2021 Chilean Presidential Elections.
 
-Voting dataset  (...) was extracted from https://www.servelelecciones.cl/ through 
+Voting dataset  (...) was obtained from https://www.servelelecciones.cl/ through 
 web scraping using `Selenium`.
 
 
