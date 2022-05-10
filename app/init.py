@@ -13,7 +13,6 @@ for i, r in enumerate(['first','second']):
     df1 = pd.read_csv(f"data/votes_{r}_president_region_geojson.csv")
     df1_reg = df1[df1['City'] == 'total']
     df1 = df1[df1['City'] != 'total']
-    # df2 = pd.read_csv('data/participacion_region_geojson.csv')
     df2 = pd.read_csv(f"data/votes_{r}_participation_region_geojson.csv")
     df2_reg = df2[df2['City'] == 'TOTAL']
     df2 = df2[df2['City'] != 'TOTAL']
@@ -32,7 +31,6 @@ for i, r in enumerate(['first','second']):
         'Region_with_id': 'str',
     })
     #
-    # df = df[df['City'] != 'total']
     df3_reg = df1_reg.copy()
     df3_reg = df3_reg.join(df2_reg[[k for k, v in join_cols.items()]])
     df3_reg["City"].replace(to_replace={"total": "TODAS"}, inplace=True)
