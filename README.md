@@ -3,7 +3,8 @@
 This data science project showcases in an interactive Dashboard Application the outcome of the two 
 voting rounds of the 2021 Chilean Presidential Elections.
 
-Voting datasets (`app/data/votes_*.csv`) were obtained from https://www.servelelecciones.cl/.
+Voting data was obtained from https://www.servelelecciones.cl/ and compiled into 
+a dataset in the files `app/data/votes_*.csv`.
 
 
 # Building Dashboard Application for visualizing voting results.
