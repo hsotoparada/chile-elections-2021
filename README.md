@@ -169,7 +169,7 @@ of our docker container.
 gcloud compute ssh chile-elections-instance --ssh-key-file ~/.ssh/gc_compute_engine
 ```
 
-Where `~/.ssh/gc_compute_engine` needs to be replace by the corresponding `<key_file_path>`.
+Where `~/.ssh/gc_compute_engine` needs to be replace by the appropriate `<key_file_path>`.
 
 After confirming that the docker container is working properly, we will be able to inspect our 
 Dashboard Application by openning a browser under the Public DNS URL provided 
