@@ -7,37 +7,50 @@ import re
 #-------------------------- PREPROCESS DATA -------------------------------------#
 
 # load dataframes of votes in comunas and regions
-df1 = pd.read_csv('data/votes_region_geojson.csv')
-df1_reg = df1[df1['City'] == 'total']
-df1 = df1[df1['City'] != 'total']
-df2 = pd.read_csv('data/participacion_region_geojson.csv')
-df2_reg = df2[df2['City'] == 'TOTAL']
-df2 = df2[df2['City'] != 'TOTAL']
-join_cols = {
-    "Participa_mesas": "Participacion_mesas",
-    "Participa_electors": "Participacion_electores",
-    "Participa_votes": "Participacion_votos",
-    "Participa_percentage": "Participacion_porcentaje"
-}
-df = df1.copy()
-df = df.join(df2[[k for k, v in join_cols.items()]])
-df = df.astype({
-    'City_id': 'str',
-    'City_with_id': 'str',
-    'Region_id': 'str',
-    'Region_with_id': 'str',
-})
-#
-# df = df[df['City'] != 'total']
-df_reg = df1_reg.copy()
-df_reg = df_reg.join(df2_reg[[k for k, v in join_cols.items()]])
-df_reg["City"].replace(to_replace={"total": "TODAS"}, inplace=True)
-df_reg = df_reg.astype({
-    'City_id': 'str',
-    'City_with_id': 'str',
-    'Region_id': 'str',
-    'Region_with_id': 'str',
-})
+dct_votes = {}
+for i, r in enumerate(['first','second']):
+    
+    df1 = pd.read_csv(f"data/votes_{r}_president_region_geojson.csv")
+    df1_reg = df1[df1['City'] == 'total']
+    df1 = df1[df1['City'] != 'total']
+    # df2 = pd.read_csv('data/participacion_region_geojson.csv')
+    df2 = pd.read_csv(f"data/votes_{r}_participation_region_geojson.csv")
+    df2_reg = df2[df2['City'] == 'TOTAL']
+    df2 = df2[df2['City'] != 'TOTAL']
+    join_cols = {
+        "Participa_mesas": "Participacion_mesas",
+        "Participa_electors": "Participacion_electores",
+        "Participa_votes": "Participacion_votos",
+        "Participa_percentage": "Participacion_votos_%"
+    }    
+    df3 = df1.copy()
+    df3 = df3.join(df2[[k for k, v in join_cols.items()]])
+    df3 = df3.astype({
+        'City_id': 'str',
+        'City_with_id': 'str',
+        'Region_id': 'str',
+        'Region_with_id': 'str',
+    })
+    #
+    # df = df[df['City'] != 'total']
+    df3_reg = df1_reg.copy()
+    df3_reg = df3_reg.join(df2_reg[[k for k, v in join_cols.items()]])
+    df3_reg["City"].replace(to_replace={"total": "TODAS"}, inplace=True)
+    df3_reg = df3_reg.astype({
+        'City_id': 'str',
+        'City_with_id': 'str',
+        'Region_id': 'str',
+        'Region_with_id': 'str',
+    })
+    
+    dct_votes[i+1] = {
+        'pres': df1,
+        'pres_reg': df1_reg,
+        'part': df2,
+        'part_reg': df2_reg,    
+        'all': df3,
+        'all_reg': df3_reg,        
+    }
 
 # load geojson datasets of comunas and regions
 with open('data/chile_comunas.geojson') as f:
@@ -95,32 +108,54 @@ region_short = {
     "DE MAGALLANES Y DE LA ANTARTICA CHILENA": "MAGALLANES",
 }
 
+dct_regions = {
+    'region_centers': region_centers,
+    'region_zooms': region_zooms,
+    'region_short': region_short,
+}
+
 # options for category selection
-options_category = [
-    {'label': "CANDIDAT@ "+x.upper(), 'value':x}
-    for x in df1.columns[2:-4].values
-    if "_per" not in x and "Votos" not in x
-]
-options_category.extend([{'label': "CANDIDAT@ FORMULA", 'value': "Formula"}])
-options_category.extend([
-    {'label': re.sub("_", " ", x.upper()), 'value':x}
-    for x in df1.columns[2:-4].values
-    if "_per" not in x and "Votos" in x
-])
-options_category.extend(
-    [{'label': re.sub("_", " ", v.upper()), 'value':k} for k, v in join_cols.items()]
-)
-#
-category_candidates = [d['value'] for d in options_category if "CANDIDAT" in d['label']]
-category_candidates.extend([d['value']+"_per" for d in options_category if "CANDIDAT" in d['label']])
-category_candidates = sorted(category_candidates)
-category_report = [d['value'] for d in options_category if "Votos_" in d['value']]
-category_report.extend([d['value']+"_per" for d in options_category if "Votos_" in d['value']])
-category_report = sorted(category_report)    
-category_participation = [d['value'] for d in options_category if "PARTICIPACION" in d['label']]
+dct_category = {}
+
+for i in [1, 2]:
+    options_category = [
+        {'label': "CANDIDAT@ "+x.upper(), 'value':x}
+        for x in dct_votes[i]['pres'].columns.values
+        if x.find('Region') == -1
+        if x.find('City') == -1
+        if x.find('Votos') == -1
+        if x.find('_per') == -1
+    ]  
+    options_category.extend([{'label': "CANDIDAT@ FORMULA", 'value': "Formula"}])
+    options_category.extend([
+        {'label': re.sub("_", " ", x.upper()), 'value':x}
+        for x in dct_votes[i]['pres'].columns.values
+        if x.find('_per') == -1
+        if x.find('Votos') == 0
+    ])
+    options_category.extend(
+        [{'label': re.sub("_", " ", v.upper()), 'value':k} for k, v in join_cols.items()]
+    )
+    #
+    category_candidates = [d['value'] for d in options_category if "CANDIDAT" in d['label']]
+    category_candidates.extend([d['value']+"_per" for d in options_category if "CANDIDAT" in d['label']])
+    category_candidates = sorted(category_candidates)
+    #
+    category_report = [d['value'] for d in options_category if "Votos_" in d['value']]
+    category_report.extend([d['value']+"_per" for d in options_category if "Votos_" in d['value']])
+    category_report = sorted(category_report)
+    #    
+    category_participation = [d['value'] for d in options_category if "PARTICIPACION" in d['label']]
+    #
+    dct_category[i] = {
+        'options_category': options_category,
+        'category_candidates': category_candidates,
+        'category_report': category_report,
+        'category_participation': category_participation,
+    }
 
 # options for region selection
-options_reg = [{'label': x, 'value':x} for x in df["Region"].unique()]
+options_reg = [{'label': x, 'value':x} for x in dct_votes[1]['all']["Region"].unique()]
 options_reg.extend([
     {'label': "TODAS POR CIUDAD", 'value': "ALL PER CITY"},
     {'label': "TODAS POR REGION", 'value': "ALL PER REGION"}    
@@ -132,10 +167,10 @@ options_scale_map = [
     {'label': "GLOBAL REGION", 'value': "ABS_2"},    
     {'label': "CATEGORIA PAIS", 'value': "ABS_3"},    
     {'label': "GLOBAL PAIS", 'value': "ABS_4"},        
-    {'label': "% CATEGORIA REGION", 'value': "PER_1"},
-    {'label': "% GLOBAL REGION", 'value': "PER_2"},
-    {'label': "% CATEGORIA PAIS", 'value': "PER_3"},
-    {'label': "% GLOBAL PAIS", 'value': "PER_4"}    
+    {'label': "CATEGORIA REGION %", 'value': "PER_1"},
+    {'label': "GLOBAL REGION %", 'value': "PER_2"},
+    {'label': "CATEGORIA PAIS %", 'value': "PER_3"},
+    {'label': "GLOBAL PAIS %", 'value': "PER_4"}    
 ]
 
 # options for scaling data in histogram
@@ -149,3 +184,10 @@ colorscales = px.colors.named_colorscales()
 colorscales_r = [c+'_r' for c in colorscales]
 colorscales.extend(colorscales_r)
 colorscales = sorted(colorscales)
+
+dct_options = {
+    'options_reg': options_reg,
+    'options_scale_map': options_scale_map,
+    'options_scale_hist': options_scale_hist,
+    'colorscales': colorscales,
+}
