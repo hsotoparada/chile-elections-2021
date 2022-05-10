@@ -77,15 +77,16 @@ docker run --network="host" -d chile-elections:1.0
 ```
 
 Here we added the "host" network option so that the the host (our local machine) network is 
-accessible to the container...
+accessible to the container.
 If the container was correctly initialized, the **Gunicorn** server should be also running.
-We should be able to see this from the container logs:
+We can check this from the container logs:
 
 ```
 docker logs <container_id>
 ```
 
-And we should be able to see our Dashboard Application by openning a browser at the URL...
+And we should be able to see our Dashboard Application by openning a browser at http://127.0.0.1 
+or its alias http://localhost.
 
 ## Pushing Docker image to Google Cloud Artifact Registry:
 
