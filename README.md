@@ -24,7 +24,7 @@ Dashboard Application.
 
 The figure below displays the Dashboard Application layout when comparing participation data for both voting rounds, 
 disaggregated by cities in the Santiago Metropolitan Region.
-Data is shown in a custom common scale in the range of 0-75%.
+Data is shown in a custom common scale defined in the range of 0-75%.
 
 ![WebApp](app/app.png)
 
