@@ -62,6 +62,7 @@ from where we can run the following command:
 
 ```
 docker build -t chile-elections:1.0 .
+docker build -t home-prices-santiago:1.0 -f deploy/Dockerfile .
 ```
 
 If the image was created, it should appear in the listed shown after running:
