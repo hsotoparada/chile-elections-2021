@@ -24,6 +24,10 @@ Dashboard Application.
 
 ### TODO: include screenshot of dashboard
 
+The figure below displays the Web Application layout...
+
+![WebApp](app/app.png)
+
 ## Dashboard instructions (translated from Spanish version shown in Dashboard)
 
 Select **RONDA**, **CATEGORIA**, **REGION**, **ESCALA** and **PALETA** from each group of dropdown menus,
@@ -61,8 +65,7 @@ In our case, the Dockerfile is stored in the root directory of our git repositor
 from where we can run the following command:
 
 ```
-docker build -t chile-elections:1.0 .
-docker build -t home-prices-santiago:1.0 -f deploy/Dockerfile .
+docker build -t chile-elections:1.0 -f deploy/Dockerfile .
 ```
 
 If the image was created, it should appear in the listed shown after running:

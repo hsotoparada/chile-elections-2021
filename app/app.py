@@ -5,8 +5,6 @@ from dash import html, dcc
 from dash.dependencies import Input, Output
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-import dash_auth
-
 
 #---------------------------- DASH LAYOUT -------------------------------------#
 
@@ -15,11 +13,6 @@ app = dash.Dash(external_stylesheets = [dbc.themes.SANDSTONE])
 
 # expose Flask instance
 server = app.server
-
-auth = dash_auth.BasicAuth(
-    app,
-    {"eleccion": "chile"}
-)
 
 header_1 = html.Div(
     [   
