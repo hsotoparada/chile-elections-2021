@@ -1,7 +1,7 @@
-# Chile-Elections
+# Chile Presidential Election, 2021 
 
 This data science project showcases in an interactive Dashboard Application the outcome of the two 
-voting rounds of the 2021 Chilean Presidential Elections.
+voting rounds of the Chilean presidential election that took place in 2021.
 
 Voting data was obtained from https://www.servelelecciones.cl/ and compiled into 
 datasets in the files `app/data/votes_*.csv`.
