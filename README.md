@@ -22,7 +22,7 @@ To deploy the Dashboard, consequently, we instead use **Nginx** for reverse prox
 The incoming traffic is forwarded by **Nginx** to **Gunicorn**, which in turn handles the python code containing the
 Dashboard Application. 
 
-The figure below displays the Dashboard Application layout comparing participation data for both voting rounds
+The figure below displays the Dashboard Application layout comparing when participation data for both voting rounds, 
 disaggregated by cities in the Santiago Metropolitan Region.
 Data is shown in a custom common scale in the range of 0-75%.
 
