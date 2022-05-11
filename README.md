@@ -99,8 +99,10 @@ it's now time to deploy it to the GCP.
 First, we create a repository in the GC **Artifact Registry**, where our **Docker** image will be stored.
 
 ```
-gcloud artifacts repositories create chile-elections --repository-format=docker \
-    --location=us-east1 --description="docker repo"
+gcloud artifacts repositories create chile-elections \
+    --repository-format=docker \
+    --location=us-east1 \
+    --description="docker repo"
 ```
 
 We can confirm that the repository has been created by running the following command:
@@ -162,7 +164,7 @@ Then, we use this instance template to create our VM instance in the desired zon
 ```
 gcloud compute instances create chile-elections-instance \
     --source-instance-template=chile-elections-instance-template \
-    --zone=us-east1-c 
+    --zone=us-east1-b 
 ```
 
 To check if our docker container has been correctly initialized and is up and running, we can access
@@ -181,4 +183,4 @@ Dashboard Application by openning a browser under the Public DNS URL provided
 for our VM instance.
 
 In this case, the Dashboard Application is accessible under the following URL:
-http://
+http://34.138.147.106
