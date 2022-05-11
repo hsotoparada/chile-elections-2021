@@ -2,7 +2,7 @@
 FROM python:3.8-slim-buster
 
 # copy required files to the container
-RUN mkdir -p /home/app/
+RUN mkdir -p /home/app
 COPY deploy/requirements.txt deploy/run_server.sh /home/app/
 COPY ./app/app.py ./app/util.py ./app/init.py /home/app/
 COPY ./app/data/ /home/app/data
