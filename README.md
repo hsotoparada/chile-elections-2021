@@ -7,7 +7,7 @@ Voting data was obtained from https://www.servelelecciones.cl/ and compiled into
 datasets in the files `app/data/votes_*.csv`.
 
 
-# Building Dashboard Application for visualizing voting results.
+## Building Dashboard Application for visualizing voting results.
 
 This Dashboard Application allows users to visualize the voting outcome in two types of interactive figures:
 a Mapbox choropleth map and a Bar chart.
@@ -54,9 +54,9 @@ This facilitates the comparison of data, for instance, between the two rounds of
 The visibility of the data can be improved by selecting an alternative colour palette (**PALETA**) to the 
 default one from the available list. 
 
-# Deploying Web Application to Google Cloud Platform (Artifact Registry, Compute Engine)
+## Deploying Web Application to Google Cloud Platform (Artifact Registry, Compute Engine)
 
-## Containerizing Dashboard Application:
+### Containerizing Dashboard Application:
 
 We will deploy our Dashboard Application to the **Google Cloud Platform (GCP)**.
 For this, we start by building a **Docker** image of our Dashboard Application, based on the intructions 
@@ -92,7 +92,7 @@ docker logs <container_id>
 And we should be able to see our Dashboard Application by openning a browser at http://127.0.0.1 
 or its alias http://localhost.
 
-## Pushing Docker image to Google Cloud Artifact Registry:
+### Pushing Docker image to Google Cloud Artifact Registry:
 
 Once we checked that our Dashboard Application can be accessed from our local machine,
 it's now time to deploy it to the GCP. 
@@ -131,7 +131,7 @@ We can now push the image to our **Artifact Registry**.
 docker push us-east1-docker.pkg.dev/<gc_project_id>/chile-elections/chile-elections
 ```
 
-## Deploying Docker container to Google Cloud Compute Engine:
+### Deploying Docker container to Google Cloud Compute Engine:
 
 We will now deploy the **Docker** image stored in our **Artifact Registry** as a **Docker** container into
 a virtual machine (VM), which we will create using the GC **Compute Engine** service.
