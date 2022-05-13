@@ -182,5 +182,5 @@ After confirming that the docker container is working properly, we will be able 
 Dashboard Application by openning a browser under the Public DNS address provided 
 for our VM instance.
 
-In this case, the Dashboard Application is accessible under the following URL:
+In this case, the Dashboard Application is temporally accessible under the following URL:
 http://34.138.147.106
